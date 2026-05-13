@@ -96,11 +96,11 @@ export function SandboxForm({ onSession, onLog }: Props) {
         session = (await res.json()) as SessionResponse;
       }
 
-      if (!session.sessionToken) {
-        throw new Error("Respuesta sin sessionToken — inspeccionar EventConsole");
+      if (!session.tokenSession) {
+        throw new Error("Respuesta sin tokenSession — inspeccionar EventConsole");
       }
 
-      onSession({ sessionToken: session.sessionToken, userData, file: pdf ?? undefined });
+      onSession({ sessionToken: session.tokenSession, userData, file: pdf ?? undefined });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

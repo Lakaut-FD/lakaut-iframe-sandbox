@@ -1,11 +1,20 @@
 export type Gender = "M" | "F" | "X";
 
+/**
+ * UserData según docu oficial:
+ * https://lakaut-fd.github.io/documentacion-docusaurus/docs/guias-practicas/firma-iframe/referencia-mensajes
+ *
+ * Required: email, gender, phone. Either dni o cuil (o ambos).
+ * Optional: dni, cuil, name, address.
+ */
 export interface UserData {
-  dni: string;
+  dni?: string;
+  cuil?: string;
   email: string;
   gender: Gender;
   phone: string;
-  name: string;
+  name?: string;
+  address?: string;
 }
 
 export interface AutoLoadFile {
@@ -37,11 +46,14 @@ export interface SignedDoc {
   };
 }
 
+/**
+ * Response de web2 `/api/integration/session/new`.
+ * El campo se llama `tokenSession` (no sessionToken) — confirmado contra el código de
+ * lakautac-web2 (iFrameSessionInfo) y la docu oficial.
+ */
 export interface SessionResponse {
-  /** JWT que el iframe consume como sessionToken */
-  sessionToken: string;
-  /** Eco/extra metadata (opcional, viene de web2) */
-  [key: string]: unknown;
+  tokenSession: string;
+  validUntil?: string;
 }
 
 export const EMPTY_USER_DATA: UserData = {
@@ -54,8 +66,10 @@ export const EMPTY_USER_DATA: UserData = {
 
 export const MOCK_USER_DATA: UserData = {
   dni: "30000000",
+  cuil: "20-30000000-9",
   email: "sandbox@lakaut.com.ar",
   gender: "M",
   phone: "1111111111",
   name: "Sandbox User",
+  address: "Av. de Mayo 1234, CABA",
 };
