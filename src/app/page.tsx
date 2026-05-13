@@ -41,7 +41,7 @@ export default function Home() {
     setSigned(null);
   }, []);
 
-  const handleDownload = () => {
+  const handleDownload = useCallback(() => {
     if (!signed) return;
     if (signed.delivery?.mode === "binary" && signed.delivery.fileBase64) {
       const mime = signed.document?.mime ?? signed.mime ?? "application/pdf";
@@ -51,7 +51,7 @@ export default function Home() {
       window.open(signed.delivery.url, "_blank");
       logEvent({ timestamp: Date.now(), type: "sandbox.download.triggered", payload: { mode: "url" } });
     }
-  };
+  }, [signed, logEvent]);
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-6">

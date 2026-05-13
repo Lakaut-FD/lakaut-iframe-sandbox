@@ -27,6 +27,16 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
   const runtimeOrigin = useRef<string | null>(null);
   const retryTimer = useRef<number | null>(null);
   const retryCount = useRef(0);
+  const onEventRef = useRef(onEvent);
+  const onSignCompletedRef = useRef(onSignCompleted);
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
+
+  useEffect(() => {
+    onSignCompletedRef.current = onSignCompleted;
+  }, [onSignCompleted]);
 
   useEffect(() => {
     hasHandshakeAck.current = false;
@@ -38,7 +48,7 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
     const sendInit = () => {
       const iframe = iframeRef.current;
       if (!iframe?.contentWindow) return;
-      const target = runtimeOrigin.current || "*";
+      const target = runtimeOrigin.current || expectedOrigin || "*";
       iframe.contentWindow.postMessage(
         {
           type: "lakaut.init",
@@ -46,11 +56,12 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
         },
         target
       );
-      onEvent({ type: "lakaut.init", payload: { hasFile: !!autoLoadFile } });
+      onEventRef.current({ type: "lakaut.init", payload: { hasFile: !!autoLoadFile } });
     };
 
     const scheduleRetry = () => {
       if (hasHandshakeAck.current || retryCount.current >= 10) return;
+      if (retryTimer.current) window.clearTimeout(retryTimer.current);
       retryCount.current += 1;
       retryTimer.current = window.setTimeout(() => {
         if (!hasHandshakeAck.current) {
@@ -76,7 +87,7 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
         return;
       }
 
-      onEvent({ type, payload, origin: event.origin });
+      onEventRef.current({ type, payload, origin: event.origin });
 
       if (type === "lakaut.ready") {
         if (!hasHandshakeAck.current) sendInit();
@@ -87,7 +98,7 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
           retryTimer.current = null;
         }
       } else if (type === "lakaut.signature.completed") {
-        onSignCompleted(payload);
+        onSignCompletedRef.current(payload);
       }
     };
 
@@ -103,7 +114,7 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
       window.clearTimeout(initialDelay);
       if (retryTimer.current) window.clearTimeout(retryTimer.current);
     };
-  }, [sessionToken, userData, autoLoadFile, onEvent, onSignCompleted]);
+  }, [sessionToken, userData, autoLoadFile]);
 
   if (!IFRAME_ORIGIN_URL) {
     return <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
