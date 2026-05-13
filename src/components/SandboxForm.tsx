@@ -5,7 +5,7 @@ import { ModeToggle } from "./ModeToggle";
 import { UserDataInputs } from "./UserDataInputs";
 import { fileToBase64 } from "@/lib/pdf";
 import type { AutoLoadFile, EventLog, Mode, SessionResponse, UserData } from "@/types/lakaut";
-import { EMPTY_USER_DATA } from "@/types/lakaut";
+import { MOCK_USER_DATA } from "@/types/lakaut";
 
 const WEB2_BASE_URL = process.env.NEXT_PUBLIC_WEB2_BASE_URL ?? "";
 
@@ -24,7 +24,7 @@ export function SandboxForm({ onSession, onLog }: Props) {
   const [mode, setMode] = useState<Mode>("server");
   const [integratorId, setIntegratorId] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [userData, setUserData] = useState<UserData>(EMPTY_USER_DATA);
+  const [userData, setUserData] = useState<UserData>(MOCK_USER_DATA);
   const [pdf, setPdf] = useState<AutoLoadFile | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
