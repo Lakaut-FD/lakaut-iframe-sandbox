@@ -1,27 +1,57 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { SandboxForm } from "@/components/SandboxForm";
+import useSWR from "swr";
+import { Header } from "@/components/Header";
+import { ProdBanner } from "@/components/ProdBanner";
 import { LakautEmbed } from "@/components/LakautEmbed";
-import { EventConsole } from "@/components/EventConsole";
-import { SignOutButton } from "@/components/SignOutButton";
+import { DevDrawer } from "@/components/DevDrawer";
 import { downloadBase64 } from "@/lib/pdf";
-import type { AutoLoadFile, EventLog, SessionResponse, SignedDoc, UserData } from "@/types/lakaut";
-import { MOCK_USER_DATA } from "@/types/lakaut";
+import type { EventLog, SessionResponse, SignedDoc, UserData, UserProfile } from "@/types/lakaut";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 interface ActiveSession {
   sessionToken: string;
   userData: UserData;
-  file?: AutoLoadFile;
+}
+
+function profileToUserData(profile: UserProfile): UserData {
+  return {
+    email: profile.email,
+    name: profile.name,
+    dni: profile.dni,
+    cuil: profile.cuil,
+    gender: profile.gender,
+    phone: profile.phone,
+  };
 }
 
 export default function Home() {
-  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { status } = useSession();
+  const { data: profile, isLoading: profileLoading } = useSWR<UserProfile | null>("/api/profile", fetcher);
   const [active, setActive] = useState<ActiveSession | null>(null);
   const [events, setEvents] = useState<EventLog[]>([]);
   const [signed, setSigned] = useState<SignedDoc | null>(null);
+  const [devMode, setDevMode] = useState(false);
   const autoStartedRef = useRef(false);
+
+  // Cargar preferencia devMode desde localStorage al montar
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setDevMode(window.localStorage.getItem("sandbox.devMode") === "true");
+  }, []);
+
+  const toggleDevMode = useCallback(() => {
+    setDevMode((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") window.localStorage.setItem("sandbox.devMode", String(next));
+      return next;
+    });
+  }, []);
 
   const logEvent = useCallback((e: EventLog) => {
     setEvents((prev) => [...prev, e]);
@@ -38,15 +68,19 @@ export default function Home() {
     setSigned(payload as SignedDoc);
   }, []);
 
-  const handleSession = useCallback((s: ActiveSession) => {
-    setActive(s);
-    setSigned(null);
-  }, []);
-
-  // Auto-arrancar session al cargar la página (server mode con defaults de env + MOCK_USER_DATA).
-  // El usuario puede sobreescribir después via SandboxForm.
+  // Redirect a onboarding si no hay profile
   useEffect(() => {
     if (status !== "authenticated") return;
+    if (profileLoading) return;
+    if (!profile) {
+      router.replace("/onboarding");
+    }
+  }, [status, profile, profileLoading, router]);
+
+  // Auto-arrancar session cuando hay profile y NextAuth está autenticado
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (!profile) return;
     if (autoStartedRef.current) return;
     autoStartedRef.current = true;
 
@@ -65,11 +99,11 @@ export default function Home() {
           payload: { auto: true },
         });
         if (!res.ok) {
-          const errBody = await res.json().catch(() => ({}));
+          const body = await res.json().catch(() => ({}));
           logEvent({
             timestamp: Date.now(),
             type: "sandbox.autostart.failed",
-            payload: { error: (errBody as { error?: string }).error ?? `HTTP ${res.status}` },
+            payload: { error: (body as { error?: string }).error ?? `HTTP ${res.status}` },
           });
           return;
         }
@@ -82,7 +116,7 @@ export default function Home() {
           });
           return;
         }
-        setActive({ sessionToken: data.tokenSession, userData: MOCK_USER_DATA });
+        setActive({ sessionToken: data.tokenSession, userData: profileToUserData(profile) });
       } catch (e) {
         logEvent({
           timestamp: Date.now(),
@@ -91,7 +125,16 @@ export default function Home() {
         });
       }
     })();
-  }, [status, logEvent]);
+  }, [status, profile, logEvent]);
+
+  const handleReloadWithOverrides = useCallback(
+    (token: string) => {
+      if (!profile) return;
+      setActive({ sessionToken: token, userData: profileToUserData(profile) });
+      setSigned(null);
+    },
+    [profile]
+  );
 
   const handleDownload = useCallback(() => {
     if (!signed) return;
@@ -105,48 +148,53 @@ export default function Home() {
     }
   }, [signed, logEvent]);
 
+  if (status !== "authenticated" || profileLoading || !profile) {
+    return (
+      <main className="flex min-h-screen items-center justify-center text-sm text-gray-500">
+        Cargando...
+      </main>
+    );
+  }
+
   return (
-    <main className="mx-auto max-w-7xl px-4 py-6">
-      <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Lakaut Iframe Sandbox</h1>
-        <div className="flex items-center gap-4 text-sm text-gray-600">
-          <span>{session?.user?.email}</span>
-          <SignOutButton />
+    <main className={"mx-auto max-w-7xl px-4 py-4 " + (devMode ? "pr-[26rem]" : "")}>
+      <Header devMode={devMode} onToggleDevMode={toggleDevMode} />
+      <ProdBanner />
+
+      {active ? (
+        <LakautEmbed
+          sessionToken={active.sessionToken}
+          userData={active.userData}
+          onEvent={handleEvent}
+          onSignCompleted={handleSignCompleted}
+        />
+      ) : (
+        <div className="flex h-[400px] items-center justify-center rounded border border-dashed border-gray-300 text-sm text-gray-500">
+          Cargando session...
         </div>
-      </header>
+      )}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <section className="lg:col-span-1">
-          <SandboxForm onSession={handleSession} onLog={logEvent} />
-          {signed && (
-            <button
-              type="button"
-              onClick={handleDownload}
-              className="mt-3 w-full rounded bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-            >
-              Download signed PDF
-            </button>
-          )}
-        </section>
+      {signed && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="rounded bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            Download signed PDF
+          </button>
+        </div>
+      )}
 
-        <section className="lg:col-span-2 space-y-4">
-          {active ? (
-            <LakautEmbed
-              sessionToken={active.sessionToken}
-              userData={active.userData}
-              autoLoadFile={active.file}
-              onEvent={handleEvent}
-              onSignCompleted={handleSignCompleted}
-            />
-          ) : (
-            <div className="flex h-[400px] items-center justify-center rounded border border-dashed border-gray-300 text-sm text-gray-500">
-              {status === "authenticated" ? "Cargando session..." : "Start a session to embed the iframe."}
-            </div>
-          )}
-
-          <EventConsole events={events} onClear={() => setEvents([])} />
-        </section>
-      </div>
+      {devMode && (
+        <DevDrawer
+          events={events}
+          onClearEvents={() => setEvents([])}
+          onReloadWithOverrides={handleReloadWithOverrides}
+          onLog={logEvent}
+          onClose={toggleDevMode}
+        />
+      )}
     </main>
   );
 }

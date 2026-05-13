@@ -1,10 +1,8 @@
 export type Gender = "M" | "F" | "X";
 
 /**
- * UserData según docu oficial:
- * https://lakaut-fd.github.io/documentacion-docusaurus/docs/guias-practicas/firma-iframe/referencia-mensajes
- *
- * Required: email, gender, phone. Either dni o cuil (o ambos).
+ * UserData según docu oficial del iframe.
+ * Required: email, gender, phone. Either dni o cuil (al menos uno).
  * Optional: dni, cuil, name, address.
  */
 export interface UserData {
@@ -15,6 +13,22 @@ export interface UserData {
   phone: string;
   name?: string;
   address?: string;
+}
+
+/**
+ * Profile persistido en Vercel KV por usuario (key: `profile:<email>`).
+ * El sandbox lo crea durante onboarding y lo usa para llenar el `userData`
+ * que se manda al iframe en cada session.
+ */
+export interface UserProfile {
+  email: string;        // mismo del Google login; también es la KV key
+  name?: string;
+  dni?: string;
+  cuil?: string;
+  gender: Gender;
+  phone: string;
+  createdAt: string;    // ISO 8601
+  updatedAt: string;
 }
 
 export interface AutoLoadFile {
@@ -48,28 +62,9 @@ export interface SignedDoc {
 
 /**
  * Response de web2 `/api/integration/session/new`.
- * El campo se llama `tokenSession` (no sessionToken) — confirmado contra el código de
- * lakautac-web2 (iFrameSessionInfo) y la docu oficial.
+ * El campo se llama `tokenSession` (confirmado contra lakautac-web2).
  */
 export interface SessionResponse {
   tokenSession: string;
   validUntil?: string;
 }
-
-export const EMPTY_USER_DATA: UserData = {
-  dni: "",
-  email: "",
-  gender: "M",
-  phone: "",
-  name: "",
-};
-
-export const MOCK_USER_DATA: UserData = {
-  dni: "30000000",
-  cuil: "20-30000000-9",
-  email: "sandbox@lakaut.com.ar",
-  gender: "M",
-  phone: "1111111111",
-  name: "Sandbox User",
-  address: "Av. de Mayo 1234, CABA",
-};
