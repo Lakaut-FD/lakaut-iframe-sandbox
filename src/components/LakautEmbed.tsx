@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { AutoLoadFile, UserData } from "@/types/lakaut";
 
 const IFRAME_ORIGIN_URL = process.env.NEXT_PUBLIC_IFRAME_EMBED_URL ?? "";
@@ -10,6 +10,18 @@ function getOriginFromUrl(maybeUrl: string): string {
     return new URL(maybeUrl).origin;
   } catch {
     return maybeUrl;
+  }
+}
+
+function buildIframeSrc(base: string, sessionToken: string): string {
+  if (!base) return base;
+  try {
+    const u = new URL(base);
+    u.searchParams.set("sessionToken", sessionToken);
+    return u.toString();
+  } catch {
+    const sep = base.includes("?") ? "&" : "?";
+    return `${base}${sep}sessionToken=${encodeURIComponent(sessionToken)}`;
   }
 }
 
@@ -29,6 +41,21 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
   const retryCount = useRef(0);
   const onEventRef = useRef(onEvent);
   const onSignCompletedRef = useRef(onSignCompleted);
+
+  // UUIDs estables por sesión (mientras no cambien sessionToken/userData/file).
+  // Docu oficial los marca requeridos en lakaut.init para idempotencia.
+  const ids = useMemo(
+    () => ({
+      nonce: crypto.randomUUID(),
+      idemKey: crypto.randomUUID(),
+    }),
+    [sessionToken, userData, autoLoadFile]
+  );
+
+  const iframeSrc = useMemo(
+    () => buildIframeSrc(IFRAME_ORIGIN_URL, sessionToken),
+    [sessionToken]
+  );
 
   useEffect(() => {
     onEventRef.current = onEvent;
@@ -52,11 +79,20 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
       iframe.contentWindow.postMessage(
         {
           type: "lakaut.init",
-          payload: { sessionToken, userData, autoLoadFile },
+          payload: {
+            nonce: ids.nonce,
+            idemKey: ids.idemKey,
+            sessionToken,
+            userData,
+            autoLoadFile,
+          },
         },
         target
       );
-      onEventRef.current({ type: "lakaut.init", payload: { hasFile: !!autoLoadFile } });
+      onEventRef.current({
+        type: "lakaut.init",
+        payload: { nonce: ids.nonce, idemKey: ids.idemKey, hasFile: !!autoLoadFile },
+      });
     };
 
     const scheduleRetry = () => {
@@ -114,7 +150,7 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
       window.clearTimeout(initialDelay);
       if (retryTimer.current) window.clearTimeout(retryTimer.current);
     };
-  }, [sessionToken, userData, autoLoadFile]);
+  }, [sessionToken, userData, autoLoadFile, ids]);
 
   if (!IFRAME_ORIGIN_URL) {
     return <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
@@ -125,7 +161,7 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
   return (
     <iframe
       ref={iframeRef}
-      src={IFRAME_ORIGIN_URL}
+      src={iframeSrc}
       title="Lakaut iframe"
       className="block w-full"
       style={{ height: 820, border: "1px solid #d1d5db", borderRadius: 8 }}
