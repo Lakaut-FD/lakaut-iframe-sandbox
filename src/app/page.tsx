@@ -74,15 +74,15 @@ export default function Home() {
           return;
         }
         const data = (await res.json()) as SessionResponse;
-        if (!data.sessionToken) {
+        if (!data.tokenSession) {
           logEvent({
             timestamp: Date.now(),
             type: "sandbox.autostart.failed",
-            payload: { error: "Respuesta sin sessionToken" },
+            payload: { error: "Respuesta sin tokenSession", received: data },
           });
           return;
         }
-        setActive({ sessionToken: data.sessionToken, userData: MOCK_USER_DATA });
+        setActive({ sessionToken: data.tokenSession, userData: MOCK_USER_DATA });
       } catch (e) {
         logEvent({
           timestamp: Date.now(),
