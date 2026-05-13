@@ -33,7 +33,13 @@ interface Props {
   onSignCompleted: (payload: unknown) => void;
 }
 
-export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onSignCompleted }: Props) {
+export function LakautEmbed({
+  sessionToken,
+  userData,
+  autoLoadFile,
+  onEvent,
+  onSignCompleted,
+}: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const hasHandshakeAck = useRef(false);
   const runtimeOrigin = useRef<string | null>(null);
@@ -42,13 +48,13 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
   const onEventRef = useRef(onEvent);
   const onSignCompletedRef = useRef(onSignCompleted);
 
-  // UUIDs estables por sesión (mientras no cambien sessionToken/userData/file).
-  // Docu oficial los marca requeridos en lakaut.init para idempotencia.
-  const ids = useMemo(
-    () => ({
-      nonce: crypto.randomUUID(),
-      idemKey: crypto.randomUUID(),
-    }),
+  // idemKey estable por sesión (identifica idempotencia de la firma).
+  // El nonce se regenera en CADA sendInit (ver useEffect) — el iframe deduplica
+  // por nonce, así que si mandamos siempre el mismo, después del primer init los
+  // retries se ignoran como "Duplicate init with same content" y el handshake.ack
+  // nunca llega si el primero se pierde por timing.
+  const idemKey = useMemo(
+    () => crypto.randomUUID(),
     [sessionToken, userData, autoLoadFile]
   );
 
@@ -76,12 +82,17 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
       const iframe = iframeRef.current;
       if (!iframe?.contentWindow) return;
       const target = runtimeOrigin.current || expectedOrigin || "*";
+      // Nuevo nonce por cada intento: garantiza que el iframe NO trate este init
+      // como duplicado del anterior (la cache `lastInitPayload` del iframe usa el
+      // nonce como discriminador). Si el handshake.ack del primer init se perdió
+      // por timing, los retries con nonce nuevo provocan otro intento de ack.
+      const nonce = crypto.randomUUID();
       iframe.contentWindow.postMessage(
         {
           type: "lakaut.init",
           payload: {
-            nonce: ids.nonce,
-            idemKey: ids.idemKey,
+            nonce,
+            idemKey,
             sessionToken,
             userData,
             autoLoadFile,
@@ -91,7 +102,12 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
       );
       onEventRef.current({
         type: "lakaut.init",
-        payload: { nonce: ids.nonce, idemKey: ids.idemKey, hasFile: !!autoLoadFile },
+        payload: {
+          nonce,
+          idemKey,
+          hasFile: !!autoLoadFile,
+          attempt: retryCount.current + 1,
+        },
       });
     };
 
@@ -150,12 +166,14 @@ export function LakautEmbed({ sessionToken, userData, autoLoadFile, onEvent, onS
       window.clearTimeout(initialDelay);
       if (retryTimer.current) window.clearTimeout(retryTimer.current);
     };
-  }, [sessionToken, userData, autoLoadFile, ids]);
+  }, [sessionToken, userData, autoLoadFile, idemKey]);
 
   if (!IFRAME_ORIGIN_URL) {
-    return <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-      NEXT_PUBLIC_IFRAME_EMBED_URL no configurada.
-    </div>;
+    return (
+      <div className="rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        NEXT_PUBLIC_IFRAME_EMBED_URL no configurada.
+      </div>
+    );
   }
 
   return (
