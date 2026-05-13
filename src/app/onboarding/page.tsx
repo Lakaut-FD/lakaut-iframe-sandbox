@@ -100,7 +100,7 @@ export default function OnboardingPage() {
 
           <ProfileForm
             initial={initial}
-            emailLocked
+            emailLocked={false}
             requireConsent={!isEditMode}
             submitLabel={isEditMode ? "Guardar cambios" : "Guardar y continuar"}
             onSubmit={submitProfile}

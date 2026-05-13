@@ -13,15 +13,15 @@ async function authorizedEmail(): Promise<string | null> {
 }
 
 export async function GET() {
-  const email = await authorizedEmail();
-  if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const profile = await getProfile(email);
+  const sessionEmail = await authorizedEmail();
+  if (!sessionEmail) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const profile = await getProfile(sessionEmail);
   return NextResponse.json(profile);
 }
 
 export async function POST(req: Request) {
-  const email = await authorizedEmail();
-  if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const sessionEmail = await authorizedEmail();
+  if (!sessionEmail) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   let body: unknown;
   try {
@@ -30,28 +30,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Forzar email del session (no del body)
-  const candidate = { ...(body as Record<string, unknown>), email };
-  const parsed = ProfileInputSchema.safeParse(candidate);
+  // El email del body PUEDE ser distinto del session email (editable por el user
+  // para mandar al iframe el email de un registro real con cert emitido).
+  // La KV key sigue siendo el session email — identidad estable del user en sandbox.
+  const parsed = ProfileInputSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
   const now = new Date().toISOString();
-  const existing = await getProfile(email);
+  const existing = await getProfile(sessionEmail);
   const profile: UserProfile = {
     ...parsed.data,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
 
-  await setProfile(profile);
+  await setProfile(sessionEmail, profile);
   return NextResponse.json(profile);
 }
 
 export async function DELETE() {
-  const email = await authorizedEmail();
-  if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  await deleteProfile(email);
+  const sessionEmail = await authorizedEmail();
+  if (!sessionEmail) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  await deleteProfile(sessionEmail);
   return NextResponse.json({ deleted: true });
 }
