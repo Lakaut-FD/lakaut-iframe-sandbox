@@ -14,8 +14,16 @@ interface Props {
 }
 
 const WEB2_BASE_URL = process.env.NEXT_PUBLIC_WEB2_BASE_URL ?? "";
+const inputClass =
+  "mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 font-mono text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900";
 
-export function DevDrawer({ events, onClearEvents, onReloadWithOverrides, onLog, onClose }: Props) {
+export function DevDrawer({
+  events,
+  onClearEvents,
+  onReloadWithOverrides,
+  onLog,
+  onClose,
+}: Props) {
   const [mode, setMode] = useState<Mode>("server");
   const [integratorId, setIntegratorId] = useState("");
   const [apiKey, setApiKey] = useState("");
@@ -39,7 +47,12 @@ export function DevDrawer({ events, onClearEvents, onReloadWithOverrides, onLog,
             apiKey: apiKey || undefined,
           }),
         });
-        onLog({ timestamp: Date.now(), type: "sandbox.session.created", via: "server", status: res.status });
+        onLog({
+          timestamp: Date.now(),
+          type: "sandbox.session.created",
+          via: "server",
+          status: res.status,
+        });
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
@@ -64,7 +77,12 @@ export function DevDrawer({ events, onClearEvents, onReloadWithOverrides, onLog,
           });
           throw new Error("Fetch falló — probable CORS o network");
         }
-        onLog({ timestamp: Date.now(), type: "sandbox.session.created", via: "client", status: res.status });
+        onLog({
+          timestamp: Date.now(),
+          type: "sandbox.session.created",
+          via: "client",
+          status: res.status,
+        });
         if (!res.ok) {
           const text = await res.text().catch(() => "");
           throw new Error(`web2 ${res.status}: ${text}`);
@@ -81,49 +99,61 @@ export function DevDrawer({ events, onClearEvents, onReloadWithOverrides, onLog,
   };
 
   return (
-    <aside className="fixed inset-y-0 right-0 z-40 flex w-96 flex-col gap-3 overflow-y-auto border-l border-gray-300 bg-white p-4 shadow-xl">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">⚙ Dev tools</h2>
-        <button onClick={onClose} className="text-xs text-gray-500 hover:text-gray-900" aria-label="Close">✕</button>
+    <aside className="fixed inset-y-0 right-0 z-40 flex w-[400px] flex-col gap-5 overflow-y-auto border-l border-zinc-200 bg-white p-5 shadow-2xl">
+      <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
+        <h2 className="text-sm font-semibold text-zinc-900">Dev tools</h2>
+        <button
+          onClick={onClose}
+          className="rounded-md p-1 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+          aria-label="Cerrar"
+        >
+          ✕
+        </button>
       </div>
 
-      <section className="space-y-2">
+      <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium">Mode</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-zinc-600">Mode</span>
           <ModeToggle value={mode} onChange={setMode} />
         </div>
-        <label className="block text-xs">
-          Integrator ID
+
+        <div>
+          <label className="block text-xs font-medium text-zinc-700">Integrator ID</label>
           <input
             type="text"
             value={integratorId}
             onChange={(e) => setIntegratorId(e.target.value)}
             placeholder={mode === "server" ? "default desde env" : "obligatorio"}
-            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1 text-xs"
+            className={inputClass}
           />
-        </label>
-        <label className="block text-xs">
-          API Key
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-zinc-700">API Key</label>
           <input
             type="password"
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={mode === "server" ? "default desde env" : "obligatorio"}
-            className="mt-1 block w-full rounded border border-gray-300 px-2 py-1 text-xs"
+            className={inputClass}
           />
-        </label>
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        </div>
+
+        {error && (
+          <p className="rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-700">
+            {error}
+          </p>
+        )}
+
         <button
           type="button"
           onClick={reload}
           disabled={busy}
-          className="w-full rounded bg-indigo-600 px-3 py-2 text-xs font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-300"
+          className="w-full rounded-md bg-zinc-900 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-zinc-400"
         >
           {busy ? "Creando session..." : "Recargar con overrides"}
         </button>
       </section>
-
-      <hr className="border-gray-200" />
 
       <EventConsole events={events} onClear={onClearEvents} />
     </aside>

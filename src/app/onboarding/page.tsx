@@ -20,7 +20,11 @@ export default function OnboardingPage() {
   }, [profile]);
 
   if (sessionStatus !== "authenticated" || isLoading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-gray-500">Cargando...</main>;
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-zinc-50 text-sm text-zinc-500">
+        Cargando...
+      </main>
+    );
   }
 
   const submitProfile = async (input: ProfileInput) => {
@@ -50,41 +54,59 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Lakaut Iframe Sandbox</h1>
-        <SignOutButton />
-      </header>
+    <main className="min-h-screen bg-zinc-50">
+      <div className="mx-auto max-w-2xl px-4 py-10">
+        <header className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm font-semibold tracking-tight text-zinc-900">
+              Lakaut Iframe Sandbox
+            </h1>
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800">
+              <span>●</span>
+              PROD
+            </span>
+          </div>
+          <SignOutButton />
+        </header>
 
-      <div className="mb-6">
-        <h2 className="text-2xl font-semibold">
-          {isEditMode ? "Editar mis datos" : `👋 Bienvenido${session?.user?.name ? ", " + session.user.name : ""}`}
-        </h2>
-        {!isEditMode && (
-          <p className="mt-1 text-sm text-gray-600">
-            Antes de empezar, necesitamos tus datos para firmar documentos.
-          </p>
-        )}
-      </div>
+        <div className="rounded-lg border border-zinc-200 bg-white p-8 shadow-sm">
+          <div className="mb-6">
+            <h2 className="text-2xl font-semibold tracking-tight text-zinc-900">
+              {isEditMode
+                ? "Editar mis datos"
+                : `Bienvenido${session?.user?.name ? `, ${session.user.name}` : ""}`}
+            </h2>
+            {!isEditMode && (
+              <p className="mt-2 text-sm text-zinc-600">
+                Antes de empezar, necesitamos tus datos reales. Se usan para firmar cada documento.
+              </p>
+            )}
+          </div>
 
-      {!isEditMode && (
-        <div className="mb-6 rounded border border-red-300 bg-red-50 p-4 text-sm">
-          <p className="font-semibold text-red-900">⚠ Esto es producción</p>
-          <p className="mt-1 text-red-800">
-            El sandbox crea firmas digitales <strong>reales</strong> en prod usando el integrador
-            interno de Lakaut. Cada firma consume créditos y queda registrada con tu identidad.
-            Asegurate de usar tus datos verdaderos.
-          </p>
+          {!isEditMode && (
+            <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-red-900">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-200 text-xs">
+                  !
+                </span>
+                Esto es producción
+              </p>
+              <p className="mt-2 text-sm text-red-800">
+                Cada firma consume créditos del integrador y queda registrada con tu identidad.
+                Usá tus datos verdaderos: el iframe va a validar tu DNI contra RENAPER.
+              </p>
+            </div>
+          )}
+
+          <ProfileForm
+            initial={initial}
+            emailLocked
+            requireConsent={!isEditMode}
+            submitLabel={isEditMode ? "Guardar cambios" : "Guardar y continuar"}
+            onSubmit={submitProfile}
+          />
         </div>
-      )}
-
-      <ProfileForm
-        initial={initial}
-        emailLocked
-        requireConsent={!isEditMode}
-        submitLabel={isEditMode ? "Guardar cambios" : "Guardar y continuar"}
-        onSubmit={submitProfile}
-      />
+      </div>
     </main>
   );
 }

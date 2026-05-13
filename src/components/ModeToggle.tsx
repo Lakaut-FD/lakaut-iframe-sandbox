@@ -13,10 +13,10 @@ export function ModeToggle({ value, onChange }: Props) {
       type="button"
       onClick={() => onChange(mode)}
       className={
-        "px-3 py-1 text-sm " +
+        "px-3 py-1.5 text-xs font-medium transition-colors " +
         (value === mode
-          ? "bg-indigo-600 text-white"
-          : "bg-white text-gray-700 hover:bg-gray-100")
+          ? "bg-zinc-900 text-white"
+          : "bg-white text-zinc-700 hover:bg-zinc-100")
       }
     >
       {label}
@@ -24,9 +24,9 @@ export function ModeToggle({ value, onChange }: Props) {
   );
 
   return (
-    <div className="inline-flex overflow-hidden rounded border border-gray-300">
-      {btn("server", "Server mode")}
-      {btn("client", "Client mode")}
+    <div className="inline-flex overflow-hidden rounded-md border border-zinc-300">
+      {btn("server", "Server")}
+      {btn("client", "Client")}
     </div>
   );
 }
