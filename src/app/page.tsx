@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { SandboxForm } from "@/components/SandboxForm";
 import { LakautEmbed } from "@/components/LakautEmbed";
 import { EventConsole } from "@/components/EventConsole";
 import { SignOutButton } from "@/components/SignOutButton";
 import { downloadBase64 } from "@/lib/pdf";
-import type { AutoLoadFile, EventLog, SignedDoc, UserData } from "@/types/lakaut";
+import type { AutoLoadFile, EventLog, SessionResponse, SignedDoc, UserData } from "@/types/lakaut";
+import { MOCK_USER_DATA } from "@/types/lakaut";
 
 interface ActiveSession {
   sessionToken: string;
@@ -16,10 +17,11 @@ interface ActiveSession {
 }
 
 export default function Home() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [active, setActive] = useState<ActiveSession | null>(null);
   const [events, setEvents] = useState<EventLog[]>([]);
   const [signed, setSigned] = useState<SignedDoc | null>(null);
+  const autoStartedRef = useRef(false);
 
   const logEvent = useCallback((e: EventLog) => {
     setEvents((prev) => [...prev, e]);
@@ -40,6 +42,56 @@ export default function Home() {
     setActive(s);
     setSigned(null);
   }, []);
+
+  // Auto-arrancar session al cargar la página (server mode con defaults de env + MOCK_USER_DATA).
+  // El usuario puede sobreescribir después via SandboxForm.
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    if (autoStartedRef.current) return;
+    autoStartedRef.current = true;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        logEvent({
+          timestamp: Date.now(),
+          type: "sandbox.session.created",
+          via: "server",
+          status: res.status,
+          payload: { auto: true },
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          logEvent({
+            timestamp: Date.now(),
+            type: "sandbox.autostart.failed",
+            payload: { error: (errBody as { error?: string }).error ?? `HTTP ${res.status}` },
+          });
+          return;
+        }
+        const data = (await res.json()) as SessionResponse;
+        if (!data.sessionToken) {
+          logEvent({
+            timestamp: Date.now(),
+            type: "sandbox.autostart.failed",
+            payload: { error: "Respuesta sin sessionToken" },
+          });
+          return;
+        }
+        setActive({ sessionToken: data.sessionToken, userData: MOCK_USER_DATA });
+      } catch (e) {
+        logEvent({
+          timestamp: Date.now(),
+          type: "sandbox.autostart.failed",
+          payload: { error: e instanceof Error ? e.message : String(e) },
+        });
+      }
+    })();
+  }, [status, logEvent]);
 
   const handleDownload = useCallback(() => {
     if (!signed) return;
@@ -88,7 +140,7 @@ export default function Home() {
             />
           ) : (
             <div className="flex h-[400px] items-center justify-center rounded border border-dashed border-gray-300 text-sm text-gray-500">
-              Start a session to embed the iframe.
+              {status === "authenticated" ? "Cargando session..." : "Start a session to embed the iframe."}
             </div>
           )}
 
