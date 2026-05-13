@@ -11,7 +11,11 @@ export async function getProfile(email: string): Promise<UserProfile | null> {
 }
 
 export async function setProfile(profile: UserProfile): Promise<void> {
-  await kv.set(key(profile.email), profile);
+  const normalized: UserProfile = {
+    ...profile,
+    email: profile.email.toLowerCase(),
+  };
+  await kv.set(key(normalized.email), normalized);
 }
 
 export async function deleteProfile(email: string): Promise<void> {

@@ -9,12 +9,10 @@ import { SignOutButton } from "@/components/SignOutButton";
 import type { UserProfile } from "@/types/lakaut";
 import type { ProfileInput } from "@/lib/profile-schema";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
 export default function OnboardingPage() {
   const router = useRouter();
   const { data: session, status: sessionStatus } = useSession();
-  const { data: profile, mutate, isLoading } = useSWR<UserProfile | null>("/api/profile", fetcher);
+  const { data: profile, mutate, isLoading } = useSWR<UserProfile | null>("/api/profile");
   const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
@@ -32,8 +30,15 @@ export default function OnboardingPage() {
       body: JSON.stringify(input),
     });
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
+      const body = await res.json().catch(() => ({} as Record<string, unknown>));
+      const errVal = (body as { error?: unknown }).error;
+      const msg =
+        typeof errVal === "string"
+          ? errVal
+          : errVal
+          ? JSON.stringify(errVal)
+          : `HTTP ${res.status}`;
+      throw new Error(msg);
     }
     await mutate();
     router.push("/");
