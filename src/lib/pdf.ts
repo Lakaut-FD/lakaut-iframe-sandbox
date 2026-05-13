@@ -8,8 +8,11 @@ export function fileToBase64(file: File): Promise<string> {
     reader.onloadend = () => {
       const result = reader.result?.toString() ?? "";
       const base64 = result.split(",")[1] ?? "";
-      if (!base64) reject(new Error("No se pudo extraer base64 del archivo"));
-      else resolve(base64);
+      if (!base64) {
+        reject(new Error("No se pudo extraer base64 del archivo"));
+        return;
+      }
+      resolve(base64);
     };
     reader.onerror = () => reject(reader.error ?? new Error("FileReader error"));
     reader.readAsDataURL(file);

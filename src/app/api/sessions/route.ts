@@ -21,6 +21,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  // Override de credenciales por body: spec §6/§7 lo permite explícitamente.
+  // El sandbox lo expone para que el equipo de ing pruebe el mismo flow server-side
+  // con apikeys de otros integradores (sin tener que cambiar env vars de Vercel).
+  // Solo usuarios con sesión NextAuth válida y email @lakaut.com[.ar] pueden invocar este endpoint.
   const integratorId = body.integratorId || process.env.INTEGRATOR_ID || "";
   const apiKey = body.apiKey || process.env.INTEGRATOR_API_KEY || "";
 
