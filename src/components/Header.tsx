@@ -12,30 +12,37 @@ interface Props {
 export function Header({ devMode, onToggleDevMode }: Props) {
   const { data: session } = useSession();
   return (
-    <header className="mb-4 flex flex-wrap items-center gap-3 border-b border-gray-200 pb-3">
-      <h1 className="text-base font-semibold">Lakaut Iframe Sandbox</h1>
-      <span className="rounded bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-900">⚠ PROD</span>
+    <header className="sticky top-0 z-10 mb-6 -mx-4 flex flex-wrap items-center gap-3 border-b border-zinc-200 bg-white/95 px-4 py-3 backdrop-blur">
+      <div className="flex items-center gap-3">
+        <h1 className="text-sm font-semibold tracking-tight text-zinc-900">
+          Lakaut Iframe Sandbox
+        </h1>
+        <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-800">
+          <span>●</span>
+          PROD
+        </span>
+      </div>
 
-      <div className="ml-auto flex items-center gap-4 text-sm text-gray-700">
-        <span>{session?.user?.email}</span>
+      <div className="ml-auto flex items-center gap-2 text-sm">
+        <span className="hidden text-zinc-500 sm:inline">{session?.user?.email}</span>
         <button
           type="button"
           onClick={onToggleDevMode}
           className={
-            "rounded border px-2 py-1 text-xs " +
+            "rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors " +
             (devMode
-              ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-              : "border-gray-300 text-gray-600 hover:bg-gray-50")
+              ? "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800"
+              : "border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50")
           }
           title="Activar herramientas de debug"
         >
-          ⚙ Dev {devMode ? "ON" : "OFF"}
+          Dev {devMode ? "·" : ""} {devMode ? "ON" : "OFF"}
         </button>
         <Link
           href="/onboarding"
-          className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
+          className="rounded-md border border-zinc-300 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50"
         >
-          👤 Mis datos
+          Mis datos
         </Link>
         <SignOutButton />
       </div>

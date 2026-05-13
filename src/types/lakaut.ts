@@ -1,33 +1,27 @@
 export type Gender = "M" | "F" | "X";
 
 /**
- * UserData según docu oficial del iframe.
- * Required: email, gender, phone. Either dni o cuil (al menos uno).
- * Optional: dni, cuil, name, address.
+ * UserData que se envía al iframe en lakaut.init.
+ * El iframe valida persona física: requiere DNI (no CUIL/CUIT).
  */
 export interface UserData {
-  dni?: string;
-  cuil?: string;
+  dni: string;
   email: string;
   gender: Gender;
   phone: string;
   name?: string;
-  address?: string;
 }
 
 /**
  * Profile persistido en Vercel KV por usuario (key: `profile:<email>`).
- * El sandbox lo crea durante onboarding y lo usa para llenar el `userData`
- * que se manda al iframe en cada session.
  */
 export interface UserProfile {
   email: string;        // mismo del Google login; también es la KV key
   name?: string;
-  dni?: string;
-  cuil?: string;
+  dni: string;
   gender: Gender;
   phone: string;
-  createdAt: string;    // ISO 8601
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -62,7 +56,6 @@ export interface SignedDoc {
 
 /**
  * Response de web2 `/api/integration/session/new`.
- * El campo se llama `tokenSession` (confirmado contra lakautac-web2).
  */
 export interface SessionResponse {
   tokenSession: string;
